@@ -51,7 +51,7 @@ object StreamManager {
   }
 }
 
-class Bus (nIdBus: Int,delay: Long, startingDelay: Long,nStations:List[Int],nSize:Int) extends Runnable{
+class Bus (nIdBus: Int,delay: Long, startingDelay: Long,nStations:List[Int],nSize:Int, startAgainDelay: Long) extends Runnable{
   def size:Int = nSize
   def idBus:Int = nIdBus
   def stations:List[Int]=nStations
@@ -59,29 +59,66 @@ class Bus (nIdBus: Int,delay: Long, startingDelay: Long,nStations:List[Int],nSiz
   var ocupation: Int = 0
 
   var queues: mutable.LinkedHashMap[Int,Int] = new mutable.LinkedHashMap()
-  for (i <- 0 to 15) {
+  for (i <- 0 to 14) {
     queues.put(i+1,0)
   }
 
+  def direction():Int = {
+    if (nStations(1) > nStations(2)) {
+      -1
+    }
+    1
+  }
+
+  def isStationNext(station: Int, stationNext: Int): Boolean =
+  {
+    if((direction== 1 && station < stationNext) || (direction== -1 && station > stationNext))
+      {
+        true
+      }
+    else if((direction== 1 && station > stationNext) || (direction== -1 && station < stationNext))
+      {
+        false
+      }
+
+    true
+
+  }
 
   def run: Unit = {
     Thread.sleep(startingDelay)
-    for (currentStation <- nStations)
-      {
-        StreamManager.add("ARRIVED:"+idBus+":"+currentStation)
-        var station: Station = Main.stationsMap(currentStation)
 
-        for( nextStation <- nStations if size >= ocupation)
-        {
-            var newUsers: Int = station.pickUp(nextStation, size-ocupation)
-          if(newUsers > 0) {
+    while(Main.runTrains) {
+      StreamManager.add("TRAIN_STATUS:" + idBus + ":On Route")
+      for (currentStation <- nStations) {
+        var station: Station = Main.stationsMap(currentStation)
+        StreamManager.add("ARRIVED:" + idBus + ":" + currentStation)
+
+
+        //Pick up passengers
+
+        for (nextStation <- nStations if size >= ocupation && isStationNext(currentStation, nextStation)) {
+          var newUsers: Int = station.pickUp(nextStation, size - ocupation)
+
+          if (newUsers > 0) {
             addUsers(newUsers, nextStation)
           }
         }
 
+        //Leave passengers
+        var leavingUsers: Int = queues(currentStation)
+        queues.put(currentStation, 0)
+        ocupation -= leavingUsers
+        StreamManager.add("TRAIN:" + idBus + ":" + ocupation)
+        station.addLeavingUsers(leavingUsers)
+
         //Time between stations
         Thread.sleep(delay)
       }
+
+      StreamManager.add("TRAIN_STATUS:" + idBus + ":Returning to initial station")
+      Thread.sleep(startAgainDelay)
+    }
   }
 
   def addUsers(number:Int, destination: Int): Boolean =
@@ -100,7 +137,7 @@ class Station (nIdStation: Int) extends Runnable
   var users = 0
   var usersLeaving = 0
   var usersComing = 0
-  for (i <- 0 to 15) {
+  for (i <- 0 to 14) {
     queues.put(i+1,0)
   }
 
@@ -112,7 +149,7 @@ class Station (nIdStation: Int) extends Runnable
       deleteUsers(number)
     }
     else {
-      queues(destination)+=number
+      queues(destination) += number
       users += number
       StreamManager.add("STATION:" + idStation + ":" + users)
     }
@@ -121,6 +158,12 @@ class Station (nIdStation: Int) extends Runnable
   def deleteUsers(number: Int): Unit = synchronized
   {
     users -= number
+    usersLeaving += number
+    StreamManager.add("STATION:"+idStation+":"+users)
+  }
+
+  def addLeavingUsers(number: Int): Unit = synchronized
+  {
     usersLeaving += number
     StreamManager.add("STATION:"+idStation+":"+users)
   }
@@ -135,17 +178,17 @@ class Station (nIdStation: Int) extends Runnable
       passengers = availableSeats
     }
 
-    queues(destination) -=  availableSeats
-    users-=passengers
-    usersLeaving+=passengers
+    queues(destination) -=  passengers
+    users -= passengers
+    usersLeaving += passengers
     passengers
   }
 
 
   def run: Unit = {
     while(true) {
-      addUsers(1, 9)
-      Thread.sleep(4000)
+      addUsers(20, 9)
+      Thread.sleep(2000)
     }
     }
 
@@ -182,21 +225,22 @@ object Main {
 
   var busesMap: mutable.LinkedHashMap[Int,Bus] = new mutable.LinkedHashMap()
   var stationsMap: mutable.LinkedHashMap[Int, Station] = mutable.LinkedHashMap()
+  var runTrains: Boolean = true
 
   def start(): Unit = {
     println("START MAIN")
     createStationsMap()
     createBusesMap()
-    new Thread(new Reporter(5000)).start()
+    new Thread(new Reporter(10000)).start()
   }
 
   def createBusesMap(): Unit = {
-    for (i <- 0 to 0) {
+    for (i <- 0 to 22) {
       var size: Int = 1800
       if (i <= 10) {
         size = 900
       }
-      busesMap.put(i+1,new Bus((i + 1), delay, 0, route1, size))
+      busesMap.put(i+1,new Bus((i + 1), delay, 0, route1, size, 50000))
       new Thread(busesMap(i+1)).start()
     }
   }
