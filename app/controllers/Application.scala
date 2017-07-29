@@ -14,6 +14,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.io.Source
+
 
 class Application @Inject()(ws: WSClient) extends Controller {
 
@@ -231,6 +233,7 @@ object Main {
     println("START MAIN")
     createStationsMap()
     createBusesMap()
+    readBuses()
     new Thread(new Reporter(10000)).start()
   }
 
@@ -250,6 +253,47 @@ object Main {
       stationsMap.put(i+1,new Station((i + 1)))
       new Thread(stationsMap(i+1)).start()
     }
+  }
+
+  def readBuses(): Unit = {
+    val bufferedSource = Source.fromFile("busSchedules.csv")
+    for (line <- bufferedSource.getLines) {
+      val cols = line.split(",").map(_.trim)
+      // do whatever you want with the columns here
+      println(s"${cols(0)}|${cols(1)}|${cols(2)}|${cols(3)}")
+
+      var size: Int = 900
+      if(cols(0).toInt > 11)
+        {
+          size = 1800
+        }
+
+      if(cols(1).toInt == 1 && cols(2).toInt==10)
+        {
+          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt,4000, cols(3).toLong*1000, route1, size, cols(3).toInt ))
+        }
+      else if(cols(1).toInt == 10 && cols(2).toInt==1)
+        {
+
+        }
+      else if(cols(1).toInt == 1 && cols(2).toInt==15)
+        {
+
+        }
+      else if(cols(1).toInt == 15 && cols(2).toInt==1)
+      {
+
+      }
+      else if(cols(1).toInt == 10 && cols(2).toInt==15)
+      {
+
+      }
+      else if(cols(1).toInt == 15 && cols(2).toInt==10)
+      {
+
+      }
+    }
+    bufferedSource.close
   }
 
 
