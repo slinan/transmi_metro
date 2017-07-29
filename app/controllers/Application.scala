@@ -232,20 +232,8 @@ object Main {
   def start(): Unit = {
     println("START MAIN")
     createStationsMap()
-    createBusesMap()
     readBuses()
     new Thread(new Reporter(10000)).start()
-  }
-
-  def createBusesMap(): Unit = {
-    for (i <- 0 to 22) {
-      var size: Int = 1800
-      if (i <= 10) {
-        size = 900
-      }
-      busesMap.put(i+1,new Bus((i + 1), delay, 0, route1, size, 50000))
-      new Thread(busesMap(i+1)).start()
-    }
   }
 
   def createStationsMap(): Unit = {
@@ -260,37 +248,37 @@ object Main {
     for (line <- bufferedSource.getLines) {
       val cols = line.split(",").map(_.trim)
       // do whatever you want with the columns here
-      println(s"${cols(0)}|${cols(1)}|${cols(2)}|${cols(3)}")
+      if(!cols(0).contains("busID")) {
 
-      var size: Int = 900
-      if(cols(0).toInt > 11)
-        {
+        var size: Int = 900
+        if (cols(0).toInt > 11) {
           size = 1800
         }
 
-      if(cols(1).toInt == 1 && cols(2).toInt==10)
-        {
-          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt,4000, cols(3).toLong*1000, route1, size, cols(3).toInt ))
+        if (cols(1).toInt == 1 && cols(2).toInt == 10) {
+          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, 4000, cols(3).toLong * 1000, route1, size, cols(3).toInt))
+          new Thread (busesMap(cols(0).toInt)).start()
         }
-      else if(cols(1).toInt == 10 && cols(2).toInt==1)
-        {
-
+        else if (cols(1).toInt == 10 && cols(2).toInt == 1) {
+          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, 4000, cols(3).toLong * 1000, route2, size, cols(3).toInt))
+          new Thread (busesMap(cols(0).toInt)).start()
         }
-      else if(cols(1).toInt == 1 && cols(2).toInt==15)
-        {
-
+        else if (cols(1).toInt == 1 && cols(2).toInt == 15) {
+          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, 4000, cols(3).toLong * 1000, route3, size, cols(3).toInt))
+          new Thread (busesMap(cols(0).toInt)).start()
         }
-      else if(cols(1).toInt == 15 && cols(2).toInt==1)
-      {
-
-      }
-      else if(cols(1).toInt == 10 && cols(2).toInt==15)
-      {
-
-      }
-      else if(cols(1).toInt == 15 && cols(2).toInt==10)
-      {
-
+        else if (cols(1).toInt == 15 && cols(2).toInt == 1) {
+          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, 4000, cols(3).toLong * 1000, route4, size, cols(3).toInt))
+          new Thread (busesMap(cols(0).toInt)).start()
+        }
+        else if (cols(1).toInt == 10 && cols(2).toInt == 15) {
+          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, 4000, cols(3).toLong * 1000, route6, size, cols(3).toInt))
+          new Thread (busesMap(cols(0).toInt)).start()
+        }
+        else if (cols(1).toInt == 15 && cols(2).toInt == 10) {
+          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, 4000, cols(3).toLong * 1000, route5, size, cols(3).toInt))
+          new Thread (busesMap(cols(0).toInt)).start()
+        }
       }
     }
     bufferedSource.close
