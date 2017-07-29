@@ -1,5 +1,5 @@
-name := """simple-play-websocket-server"""
-
+name := """transmi-metro"""
+// Claudia Bedoya, Santiago Liñán
 version := "1.0-SNAPSHOT"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
