@@ -27,15 +27,22 @@ class Application @Inject()(ws: WSClient) extends Controller {
   // sends the time every second, ignores any input
   def wsPingPong = WebSocket.using[String] {
     request =>
-      Logger.info(s"wsPingPong, client connected.")
-      var switch: Boolean = true
+      Logger.info(s"Client Connected")
       StreamManager.queue.clear()
       Main.start()
       val outEnumerator = Enumerator.repeatM[String](Promise.timeout({
         StreamManager.poll()
-      }, 30))
+
+      }, 20))
+
+      val inIteratee: Iteratee[String, Unit] = Iteratee.foreach[String](receivedString => {
+        Main.killAll()
+        StreamManager.queue.clear()
+      })
 
       (Iteratee.ignore[String], outEnumerator)
+      (inIteratee, outEnumerator)
+
   }
 }
 
@@ -92,14 +99,14 @@ class Bus (nIdBus: Int,delay: Long, startingDelay: Long,nStations:List[Int],nSiz
 
     while(Main.runTrains) {
       StreamManager.add("TRAIN_STATUS:" + idBus + ":On Route")
-      for (currentStation <- nStations) {
+      for (currentStation <- nStations if Main.runTrains) {
         var station: Station = Main.stationsMap(currentStation)
         StreamManager.add("ARRIVED:" + idBus + ":" + currentStation)
 
 
         //Pick up passengers
 
-        for (nextStation <- nStations if size >= ocupation && isStationNext(currentStation, nextStation)) {
+        for (nextStation <- nStations if size >= ocupation && isStationNext(currentStation, nextStation) if Main.runTrains) {
           var newUsers: Int = station.pickUp(nextStation, size - ocupation)
 
           if (newUsers > 0) {
@@ -196,7 +203,7 @@ class Station (nIdStation: Int) extends Runnable
 
 
       var people: People = queueLeaving.peek()
-      while (count == people.minutoLlegada)
+      while (people != null && count == people.minutoLlegada && Main.runTrains)
         {
           queueLeaving.poll()
           addUsers(people.numPersonas, people.destino)
@@ -221,7 +228,7 @@ class Reporter(time:Long) extends Runnable {
 
   def run: Unit = {
 
-    while (true) {
+    while (Main.runTrains) {
       Thread.sleep(time)
       Main.stationsMap.foreach(_._2.reportStatistics)
     }
@@ -240,6 +247,17 @@ class People(pNumPersonas: Int, pDestino: Int, pOrigen: Int, pMinutoLlegada: Int
 
 
 object Main {
+  def killAll(): Unit = {
+    runTrains = false
+    var i: Int = 0
+    while(i<40) {
+      threads.poll().interrupt()
+      i+=1
+    }
+  }
+
+  def threads: ConcurrentLinkedQueue[Thread] =new ConcurrentLinkedQueue[Thread] ()
+
   val route1: List[Int] = List[Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
   val route2: List[Int] = List[Int](10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
   val route3: List[Int] = List[Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
@@ -262,7 +280,9 @@ object Main {
     readPeople()
     startStations()
     readBuses()
-    new Thread(new Reporter(reportDelay)).start()
+    var thReporter: Thread = new Thread(new Reporter(reportDelay))
+    thReporter.start()
+    threads.add(thReporter)
   }
 
   def createStationsMap(): Unit = {
@@ -273,7 +293,9 @@ object Main {
 
   def startStations(): Unit = {
     for (i <- 0 to 14) {
-      new Thread (stationsMap(i+1)).start()
+      var thStation: Thread = new Thread (stationsMap(i+1))
+      thStation.start()
+      threads.add(thStation)
     }
   }
 
@@ -310,29 +332,36 @@ object Main {
         }
 
         if (cols(1).toInt == 1 && cols(2).toInt == 10) {
-          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, delay, cols(3).toLong * baseUnit, route1, size, startAgainDelay))
-          new Thread (busesMap(cols(0).toInt)).start()
+           busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, delay, cols(3).toLong * baseUnit, route1, size, startAgainDelay))
+          var th: Thread = new Thread (busesMap(cols(0).toInt))
+          th.start()
+          threads.add(th)
         }
         else if (cols(1).toInt == 10 && cols(2).toInt == 1) {
           busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, delay, cols(3).toLong * baseUnit, route2, size, startAgainDelay))
-          new Thread (busesMap(cols(0).toInt)).start()
-        }
+          var th: Thread = new Thread (busesMap(cols(0).toInt))
+          th.start()
+          threads.add(th)        }
         else if (cols(1).toInt == 1 && cols(2).toInt == 15) {
           busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, delay, cols(3).toLong * baseUnit, route3, size, startAgainDelay))
-          new Thread (busesMap(cols(0).toInt)).start()
-        }
+          var th: Thread = new Thread (busesMap(cols(0).toInt))
+          th.start()
+          threads.add(th)        }
         else if (cols(1).toInt == 15 && cols(2).toInt == 1) {
           busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, delay, cols(3).toLong * baseUnit, route4, size, startAgainDelay))
-          new Thread (busesMap(cols(0).toInt)).start()
-        }
+          var th: Thread = new Thread (busesMap(cols(0).toInt))
+          th.start()
+          threads.add(th)        }
         else if (cols(1).toInt == 10 && cols(2).toInt == 15) {
           busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, delay, cols(3).toLong * baseUnit, route6, size, startAgainDelay))
-          new Thread (busesMap(cols(0).toInt)).start()
-        }
+          var th: Thread = new Thread (busesMap(cols(0).toInt))
+          th.start()
+          threads.add(th)        }
         else if (cols(1).toInt == 15 && cols(2).toInt == 10) {
           busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, delay, cols(3).toLong * baseUnit, route5, size, startAgainDelay))
-          new Thread (busesMap(cols(0).toInt)).start()
-        }
+          var th: Thread = new Thread (busesMap(cols(0).toInt))
+          th.start()
+          threads.add(th)        }
       }
     }
     bufferedSource.close

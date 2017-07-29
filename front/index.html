@@ -129,7 +129,9 @@
     }
 
     function closeConn() {
+        myWebSocket.send("KILL");
         myWebSocket.close();
+        //location.reload(true);
     }
 
     </script>
@@ -169,7 +171,6 @@
         <p class="lead text-muted">Please start the simulation. 12 seconds of simulation are 3 minutes in the system.</p>
         <p>
           <a href="#" class="btn btn-primary" onclick="connectToWS();return false;">Start</a>
-          <a href="#" class="btn btn-secondary" onclick="closeConn();return false;">Stop</a>
         </p>
       </div>
     </section>
@@ -591,9 +592,6 @@ var chart2 = new Chart(ctx2, {
     function move(train, station) {
         train.x = station.x;
     }
-
-    function slowMove(){
-}
 
     cX = 77;
     var stations = [];
