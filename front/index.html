@@ -31,16 +31,6 @@
 
         myWebSocket.onmessage = function(event) {
 
-        if(event.data)
-        {
-          console.log(event.data)
-        }
-
-            var date = new Date;
-            var seconds = date.getSeconds();
-            var minutes = date.getMinutes();
-            var hour = date.getHours();
-
             if(swalClosed)
             {
             swal.close();
@@ -55,7 +45,10 @@
             }
 
             if(event.data)
-            {
+            {var date = new Date;
+                var seconds = date.getSeconds();
+                var minutes = date.getMinutes();
+                var hour = date.getHours();
             message = event.data;
             var split = message.split(":");
 
@@ -98,7 +91,6 @@
                 chart2.update();
 
             }
-
 
             var psconsole = $('#notifications');
             psconsole.append(event.data+"  ["+hour+":"+minutes+":"+seconds+"]\r\n"); 
@@ -174,7 +166,7 @@
     <section class="jumbotron text-center">
       <div class="container">
         <h1 class="jumbotron-heading">TransmiMetro</h1>
-        <p class="lead text-muted">Please start the simulation</p>
+        <p class="lead text-muted">Please start the simulation. 12 seconds of simulation are 3 minutes in the system.</p>
         <p>
           <a href="#" class="btn btn-primary" onclick="connectToWS();return false;">Start</a>
           <a href="#" class="btn btn-secondary" onclick="closeConn();return false;">Stop</a>
@@ -201,7 +193,7 @@
       </div>
 
       <div class="row">
-      <div class="col-md-6">
+      <div class="col-md-4">
   <h2>Stations</h2>
   <p>Stations information. Click on each button, to get the station population density report.</p>            
   <table class="table table-striped">
@@ -307,7 +299,7 @@
     </tbody>
   </table>
 </div>
-<div class="col-md-6">
+<div class="col-md-8">
     <h2>Trains</h2>
     <p>Real time updated occupation for each train.</p>            
 <table class="table table-striped">
@@ -613,7 +605,6 @@ var chart2 = new Chart(ctx2, {
     } 
 
     app = new PIXI.Application(800, 600, {backgroundColor : 0xECEEEF});
-        console.log(document);
     document.getElementById("map").appendChild(app.view);
 
     var back = PIXI.Sprite.fromImage('background.png')
@@ -654,7 +645,6 @@ var chart2 = new Chart(ctx2, {
 }
 
 function onButtonDown () {
-    console.log(this);
     title = "Train "+this.numb+"";
     content = "Max capacity: "+this.max +"\r\n Number of passengers: "+this.users + "\r\n \r\n * To refresh this value, please click OK and click again on the train";
     swal(title, content)
@@ -665,8 +655,6 @@ function openReport(stationNum)
 {
     currentStationReport = stations[stationNum-1];
 
-    console.log(currentStationReport)
-    
     $('#stname').text(stationNum);
 
     $("#modalReport").modal();

@@ -33,7 +33,7 @@ class Application @Inject()(ws: WSClient) extends Controller {
       Main.start()
       val outEnumerator = Enumerator.repeatM[String](Promise.timeout({
         StreamManager.poll()
-      }, 10))
+      }, 30))
 
       (Iteratee.ignore[String], outEnumerator)
   }
@@ -143,6 +143,8 @@ class Station (nIdStation: Int) extends Runnable
     queues.put(i+1,0)
   }
 
+  var queueLeaving: ConcurrentLinkedQueue[People] = new ConcurrentLinkedQueue[People]()
+
   def addUsers(number:Int, destination: Int): Unit = synchronized
   {
     usersComing +=number
@@ -188,9 +190,21 @@ class Station (nIdStation: Int) extends Runnable
 
 
   def run: Unit = {
-    while(true) {
-      addUsers(20, 9)
-      Thread.sleep(2000)
+
+    var count: Int = 0
+    while(Main.runTrains) {
+
+
+      var people: People = queueLeaving.peek()
+      while (count == people.minutoLlegada)
+        {
+          queueLeaving.poll()
+          addUsers(people.numPersonas, people.destino)
+          people = queueLeaving.peek()
+        }
+      count += 1
+
+      Thread.sleep(Main.baseUnit)
     }
     }
 
@@ -215,6 +229,15 @@ class Reporter(time:Long) extends Runnable {
   }
 }
 
+class People(pNumPersonas: Int, pDestino: Int, pOrigen: Int, pMinutoLlegada: Int )
+{
+  def numPersonas:Int = pNumPersonas
+  def destino:Int = pDestino
+  def origen:Int = pOrigen
+  def minutoLlegada = pMinutoLlegada
+
+}
+
 
 object Main {
   val route1: List[Int] = List[Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
@@ -223,7 +246,11 @@ object Main {
   val route4: List[Int] = List[Int](15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
   val route5: List[Int] = List[Int](15, 14, 13, 12, 11, 10)
   val route6: List[Int] = List[Int](10, 11, 12, 13, 14, 15)
-  val delay: Long = 4000
+
+  val baseUnit = 4000
+  val delay: Long = 4*baseUnit
+  val reportDelay: Long = 10*baseUnit
+  val startAgainDelay = 10*baseUnit
 
   var busesMap: mutable.LinkedHashMap[Int,Bus] = new mutable.LinkedHashMap()
   var stationsMap: mutable.LinkedHashMap[Int, Station] = mutable.LinkedHashMap()
@@ -232,15 +259,42 @@ object Main {
   def start(): Unit = {
     println("START MAIN")
     createStationsMap()
+    readPeople()
+    startStations()
     readBuses()
-    new Thread(new Reporter(10000)).start()
+    new Thread(new Reporter(reportDelay)).start()
   }
 
   def createStationsMap(): Unit = {
     for (i <- 0 to 14) {
       stationsMap.put(i+1,new Station((i + 1)))
-      new Thread(stationsMap(i+1)).start()
     }
+  }
+
+  def startStations(): Unit = {
+    for (i <- 0 to 14) {
+      new Thread (stationsMap(i+1)).start()
+    }
+  }
+
+  def readPeople(): Unit = {
+    val bufferedSource = Source.fromFile("filePeople.csv")
+    for (line <- bufferedSource.getLines) {
+      val cols = line.split(",").map(_.trim)
+      var numPersonas: Int = 0
+      var destino: Int = 0
+      var origen: Int = 0
+      var minutoLlegada: Int = 0
+      if(!cols(0).contains("num_personas")) {
+        numPersonas = cols(0).toInt
+        destino = cols(1).toInt
+        origen = cols(2).toInt
+        minutoLlegada = cols(3).toInt
+        if(origen != destino) {
+          stationsMap(origen).queueLeaving.add(new People(numPersonas, destino, origen, minutoLlegada))
+        }
+      }
+      }
   }
 
   def readBuses(): Unit = {
@@ -256,27 +310,27 @@ object Main {
         }
 
         if (cols(1).toInt == 1 && cols(2).toInt == 10) {
-          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, 4000, cols(3).toLong * 1000, route1, size, cols(3).toInt))
+          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, delay, cols(3).toLong * baseUnit, route1, size, startAgainDelay))
           new Thread (busesMap(cols(0).toInt)).start()
         }
         else if (cols(1).toInt == 10 && cols(2).toInt == 1) {
-          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, 4000, cols(3).toLong * 1000, route2, size, cols(3).toInt))
+          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, delay, cols(3).toLong * baseUnit, route2, size, startAgainDelay))
           new Thread (busesMap(cols(0).toInt)).start()
         }
         else if (cols(1).toInt == 1 && cols(2).toInt == 15) {
-          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, 4000, cols(3).toLong * 1000, route3, size, cols(3).toInt))
+          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, delay, cols(3).toLong * baseUnit, route3, size, startAgainDelay))
           new Thread (busesMap(cols(0).toInt)).start()
         }
         else if (cols(1).toInt == 15 && cols(2).toInt == 1) {
-          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, 4000, cols(3).toLong * 1000, route4, size, cols(3).toInt))
+          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, delay, cols(3).toLong * baseUnit, route4, size, startAgainDelay))
           new Thread (busesMap(cols(0).toInt)).start()
         }
         else if (cols(1).toInt == 10 && cols(2).toInt == 15) {
-          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, 4000, cols(3).toLong * 1000, route6, size, cols(3).toInt))
+          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, delay, cols(3).toLong * baseUnit, route6, size, startAgainDelay))
           new Thread (busesMap(cols(0).toInt)).start()
         }
         else if (cols(1).toInt == 15 && cols(2).toInt == 10) {
-          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, 4000, cols(3).toLong * 1000, route5, size, cols(3).toInt))
+          busesMap.put(cols(0).toInt, new Bus(cols(0).toInt, delay, cols(3).toLong * baseUnit, route5, size, startAgainDelay))
           new Thread (busesMap(cols(0).toInt)).start()
         }
       }
