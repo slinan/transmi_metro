@@ -322,8 +322,8 @@ object Main {
   val route6: List[Int] = List[Int](10, 11, 12, 13, 14, 15)
   val baseUnit = 4000
   val delay: Long = 4*baseUnit
-  val reportDelay: Long = 10*baseUnit
-  val startAgainDelay = 10*baseUnit
+  val reportDelay: Long = 3*baseUnit
+  val startAgainDelay = 8*baseUnit
 
   //Hash map of buses
   var busesMap: mutable.LinkedHashMap[Int,Bus] = new mutable.LinkedHashMap()
