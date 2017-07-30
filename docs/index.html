@@ -1,582 +1,580 @@
 <html>
-
-
 <head>
-<meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
-<script src="https://code.jquery.com/jquery-3.1.1.slim.min.js" integrity="sha384-A7FZj7v+d/sdmMqp/nOQwliLvUsJfDHW+k9Omg/a/EheAdgtzNs3hpfag6Ed950n" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/4.5.1/pixi.min.js"></script>
-<script src="https://cdn.jsdelivr.net/sweetalert2/5.3.8/sweetalert2.js"></script>
-<link href="https://cdn.jsdelivr.net/sweetalert2/5.3.8/sweetalert2.css" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.min.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.1.1.slim.min.js" integrity="sha384-A7FZj7v+d/sdmMqp/nOQwliLvUsJfDHW+k9Omg/a/EheAdgtzNs3hpfag6Ed950n" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/4.5.1/pixi.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/sweetalert2/5.3.8/sweetalert2.js"></script>
+  <link href="https://cdn.jsdelivr.net/sweetalert2/5.3.8/sweetalert2.css" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.min.js"></script>
 
-    <script type="text/javascript">
-    var myWebSocket;
-    var app;
-    var currentStationReport = {time:[], average:[], in:[], out:[]};
-    var swalClosed = true;
+  <script type="text/javascript">
+      var myWebSocket;
+      var app;
+      var currentStationReport = {time:[], average:[], in:[], out:[]};
+      var swalClosed = true;
 
-    function connectToWS() {
-        swal('Loading')
-        swal.showLoading()
-        var endpoint = "ws://0.0.0.0:9000/pingpong";
-        if (myWebSocket !== undefined) {
-            myWebSocket.close()
-        }
-
-        myWebSocket = new WebSocket(endpoint);
-
-        myWebSocket.onmessage = function(event) {
-
-            if(swalClosed)
-            {
-            swal.close();
-            swalClosed = false;
-            }
-
-            var leng;
-            if (event.data.size === undefined) {
-                leng = event.data.length
-            } else {
-                leng = event.data.size
-            }
-
-            if(event.data)
-            {var date = new Date;
-                var seconds = date.getSeconds();
-                var minutes = date.getMinutes();
-                var hour = date.getHours();
-            message = event.data;
-            var split = message.split(":");
-
-            if(split[0].localeCompare("ARRIVED")==0)
-            {
-                numTrain = parseInt(split[1]);
-                numStation = parseInt(split[2]);
-                move(trains[numTrain-1],stations[numStation-1]);
-            }
-            else if(split[0].localeCompare("STATION")==0)
-            {
-                numStation = parseInt(split[1]);
-                stations[numStation-1].users = parseInt(split[2]);
-                $('#'+(numStation)+'_passengers').text(split[2]);
-            }
-           else if(split[0].localeCompare("TRAIN")==0)
-            {
-                numTrain = parseInt(split[1]);
-                trains[numTrain-1].users = parseInt(split[2]);
-                $('#'+(numTrain)+'_train').text(split[2]);
-            }
-            else if(split[0].localeCompare("TRAIN_STATUS")==0)
-            {
-                numTrain = parseInt(split[1]);
-                $('#'+(numTrain)+'_trainStatus').text(split[2]);
-                if(split[2].localeCompare("Returning to initial station") == 0)
-                {
-                  trains[numTrain-1].x = 0;
-                }
-
-            }
-           else if(split[0].localeCompare("REPORT")==0)
-            {
-                numStation = parseInt(split[1]);
-                stations[numStation-1].time.push(hour+":"+minutes+":"+seconds);
-                stations[numStation-1].average.push(parseInt(split[2]));
-                stations[numStation-1].in.push(parseInt(split[3]));
-                stations[numStation-1].out.push(parseInt(split[4]));
-                chart1.update();
-                chart2.update();
-
-            }
-
-            var psconsole = $('#notifications');
-            psconsole.append(event.data+"  ["+hour+":"+minutes+":"+seconds+"]\r\n"); 
-            if(psconsole.length)
-            psconsole.scrollTop(psconsole[0].scrollHeight - psconsole.height());
+      function connectToWS() {
+          swal('Loading')
+          swal.showLoading()
+          var endpoint = "ws://localhost:9000/pingpong";
+          if (myWebSocket !== undefined) {
+              myWebSocket.close()
           }
 
+          myWebSocket = new WebSocket(endpoint);
 
+          myWebSocket.onmessage = function(event) {
 
+              if(swalClosed)
+              {
+                  swal.close();
+                  swalClosed = false;
+              }
 
+              var leng;
+              if (event.data.size === undefined) {
+                  leng = event.data.length
+              } else {
+                  leng = event.data.size
+              }
 
-        }
+              if(event.data)
+              {var date = new Date;
+                  var seconds = date.getSeconds();
+                  var minutes = date.getMinutes();
+                  var hour = date.getHours();
+                  message = event.data;
+                  var split = message.split(":");
 
-        myWebSocket.onopen = function(evt) {
-            console.log("onopen.");
-        };
+                  if(split[0].localeCompare("ARRIVED")==0)
+                  {
+                      numTrain = parseInt(split[1]);
+                      numStation = parseInt(split[2]);
+                      move(trains[numTrain-1],stations[numStation-1]);
+                  }
+                  else if(split[0].localeCompare("STATION")==0)
+                  {
+                      numStation = parseInt(split[1]);
+                      stations[numStation-1].users = parseInt(split[2]);
+                      $('#'+(numStation)+'_passengers').text(split[2]);
+                  }
+                  else if(split[0].localeCompare("TRAIN")==0)
+                  {
+                      numTrain = parseInt(split[1]);
+                      trains[numTrain-1].users = parseInt(split[2]);
+                      $('#'+(numTrain)+'_train').text(split[2]);
+                  }
+                  else if(split[0].localeCompare("TRAIN_STATUS")==0)
+                  {
+                      numTrain = parseInt(split[1]);
+                      $('#'+(numTrain)+'_trainStatus').text(split[2]);
+                      if(split[2].localeCompare("Returning to initial station") == 0)
+                      {
+                          trains[numTrain-1].x = 0;
+                      }
 
-        myWebSocket.onclose = function(evt) {
-            console.log("onclose.");
-            swalClosed = true;
-        };
+                  }
+                  else if(split[0].localeCompare("REPORT")==0)
+                  {
+                      numStation = parseInt(split[1]);
+                      stations[numStation-1].time.push(hour+":"+minutes+":"+seconds);
+                      stations[numStation-1].average.push(parseInt(split[2]));
+                      stations[numStation-1].in.push(parseInt(split[3]));
+                      stations[numStation-1].out.push(parseInt(split[4]));
+                      chart1.update();
+                      chart2.update();
+                  }
 
-        myWebSocket.onerror = function(evt) {
-            console.log("Error!");
-            swal(
-            'Oops...',
-            'Error connecting to the socket',
-            'error'
-)
-        };
-    }
+                  var psconsole = $('#notifications');
+                  psconsole.append(event.data+"  ["+hour+":"+minutes+":"+seconds+"]\r\n");
+                  if(psconsole.length)
+                      psconsole.scrollTop(psconsole[0].scrollHeight - psconsole.height());
+              }
+          }
 
-    function sendMsg() {
-        var message = document.getElementById("myMessage").value;
-        myWebSocket.send(message);
-    }
+          myWebSocket.onopen = function(evt) {
+              console.log("onopen.");
+          };
 
-    function closeConn() {
-        myWebSocket.send("KILL");
-        myWebSocket.close();
-        //location.reload(true);
-    }
+          myWebSocket.onclose = function(evt) {
+              console.log("onclose.");
+              swalClosed = true;
+          };
 
-    </script>
+          myWebSocket.onerror = function(evt) {
+              console.log("Error!");
+              swal(
+                  'Oops...',
+                  'Error connecting to the socket',
+                  'error'
+              )
+          };
+      }
+
+      function sendMsg() {
+          var message = document.getElementById("myMessage").value;
+          myWebSocket.send(message);
+      }
+
+      function closeConn() {
+          myWebSocket.send("KILL");
+          myWebSocket.close();
+          //location.reload(true);
+      }
+
+  </script>
 </head>
 <body>
 
-    <div class="collapse bg-inverse" id="navbarHeader">
-      <div class="container">
-        <div class="row">
-          <div class="col-sm-8 py-4">
-            <h4 class="text-white">About</h4>
-            <p class="text-muted">This project is built with Scala, Play and Websockets.</p>
-          </div>
-          <div class="col-sm-4 py-4">
-            <h4 class="text-white">Contact</h4>
-            <ul class="list-unstyled">
-              <li class="text-white">Claudia Bedoya</li>
-              <li class="text-white">Santiago Liñán</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="navbar navbar-inverse bg-inverse">
-      <div class="container d-flex justify-content-between">
-        <a href="#" class="navbar-brand">TransmiMetro</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarHeader" aria-controls="navbarHeader" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-      </div>
-    </div>
-
-    <section class="jumbotron text-center">
-      <div class="container">
-        <h1 class="jumbotron-heading">TransmiMetro</h1>
-        <p class="lead text-muted">Please start the simulation. 12 seconds of simulation are 3 minutes in the system.</p>
-        <p>
-          <a href="#" class="btn btn-primary" onclick="connectToWS();return false;">Start</a>
-        </p>
-      </div>
-    </section>
-
-      <div class="container">
-
-        <div class="row">
-        <div class="col-5">
-       <h2> Last Events </h2>
-         <p>These are the events in real time in the system.</p>  
-
-            <textarea class="form-control" id="notifications" rows="28" readonly></textarea>        
-        </div>
-
-       <div class="col-7">
-       <h2> System map </h2>
-  <p>Click on the trains to get more information about them.</p>  
-       <div id="map">
-       </div>
-        </div>
-      </div>
-
-      <div class="row">
-      <div class="col-md-4">
-  <h2>Stations</h2>
-  <p>Stations information. Click on each button, to get the station population density report.</p>            
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Users</th>
-        <th>Report</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>1</td>
-        <td>Portal Américas</td>
-        <td id="1_passengers">0</td>
-        <td><button class="btn btn-primary" onclick="openReport(1);return false;">Report</button></td>
-      </tr>
-      <tr>
-        <td>2</td>
-        <td>Calle 42 Sur</td>
-        <td id="2_passengers">0</td>
-        <td><button class="btn btn-primary"  onclick="openReport(2);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-      <tr>
-        <td>3</td>
-        <td>Carrera 80</td>
-        <td id="3_passengers">0</td>
-        <td><button class="btn btn-primary"  onclick="openReport(3);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-      <tr>
-        <td>4</td>
-        <td>Kennedy</td>
-        <td id="4_passengers">0</td>
-        <td><button class="btn btn-primary"  onclick="openReport(4);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-      <tr>
-        <td>5</td>
-        <td>Avenida Boyaca</td>
-        <td id="5_passengers">0</td>
-        <td><button class="btn btn-primary"  onclick="openReport(5);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-      <tr>
-        <td>6</td>
-        <td>Carrera 68</td>
-        <td id="6_passengers">0</td>
-        <td><button class="btn btn-primary"  onclick="openReport(6);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-      <tr>
-        <td>7</td>
-        <td>Carrera 50</td>
-        <td id="7_passengers">0</td>
-        <td ><button class="btn btn-primary"  onclick="openReport(7);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-      <tr>
-        <td>8</td>
-        <td>NQS</td>
-        <td id="8_passengers">0</td>
-        <td><button class="btn btn-primary"  onclick="openReport(8);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-      <tr>
-        <td>9</td>
-        <td>Narino</td>
-        <td id="9_passengers">0</td>
-        <td><button class="btn btn-primary"  onclick="openReport(9);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-      <tr>
-        <td>10</td>
-        <td>Calle 1</td>
-        <td id="10_passengers">0</td>
-        <td><button class="btn btn-primary"  onclick="openReport(10);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-      <tr>
-        <td>11</td>
-        <td>Calle 10</td>
-        <td id="11_passengers">0</td>
-        <td><button class="btn btn-primary"  onclick="openReport(11);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-      <tr>
-        <td>12</td>
-        <td>Calle 26</td>
-        <td id="12_passengers">0</td>
-        <td><button class="btn btn-primary"  onclick="openReport(12);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-      <tr>
-        <td>13</td>
-        <td>Calle 45</td>
-        <td id="13_passengers">0</td>
-        <td><button class="btn btn-primary"  onclick="openReport(13);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-      <tr>
-        <td>14</td>
-        <td>Calle 63</td>
-        <td id="14_passengers">0</td>
-        <td><button class="btn btn-primary"  onclick="openReport(14);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-      <tr>
-        <td>15</td>
-        <td>Calle 72</td>
-        <td id="15_passengers">0</td>
-        <td><button class="btn btn-primary"   onclick="openReport(15);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-<div class="col-md-8">
-    <h2>Trains</h2>
-    <p>Real time updated occupation for each train.</p>            
-<table class="table table-striped">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Stations</th>
-        <th>Occupation</th>
-        <th>Maximum Capacity</th>
-        <th>Current Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>1</td>
-        <td>[1,2,3,4,5,6,7,8,9,10]</td>
-        <td id="1_train">0</td>
-        <td>900</td>
-        <td id="1_trainStatus">On Route</td>
-      </tr>
-      <tr>
-        <td>2</td>
-        <td>[10,9,8,7,6,5,4,3,2,1]</td>
-        <td id="2_train">0</td>
-        <td>900</td>
-                <td id="2_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>3</td>
-        <td>[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]</td>
-        <td id="3_train">0</td>
-        <td>900</td>
-                <td id="3_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>4</td>
-        <td>[15,14,13,12,11,10,9,8,7,6,5,4,3,2,1]</td>
-        <td id="4_train">0</td>
-        <td>900</td>
-                <td id="4_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>5</td>
-        <td>[15,14,13,12,11,10]</td>
-        <td id="5_train">0</td>
-        <td>900</td>
-                <td id="5_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>6</td>
-        <td>[10,11,12,13,14,15]</td>
-        <td id="6_train">0</td>
-        <td>900</td>
-                <td id="6_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>7</td>
-        <td>[1,2,3,4,5,6,7,8,9,10]</td>
-        <td id="7_train">0</td>
-        <td>900</td>
-                <td id="7_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>8</td>
-        <td>[10,9,8,7,6,5,4,3,2,1]</td>
-        <td id="8_train">0</td>
-        <td>900</td>
-                <td id="8_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>9</td>
-        <td>[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]</td>
-        <td id="9_train">0</td>
-        <td>900</td>
-                <td id="9_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>10</td>
-        <td>[15,14,13,12,11,10,9,8,7,6,5,4,3,2,1]</td>
-        <td id="10_train">0</td>
-        <td>900</td>
-                <td id="10_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>11</td>
-        <td>[10,11,12,13,14,15]</td>
-        <td id="11_train">0</td>
-        <td>900</td>
-                <td id="11_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>12</td>
-        <td>[1,2,3,4,5,6,7,8,9,10]</td>
-        <td id="12_train">0</td>
-        <td>1800</td>
-                <td id="12_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>13</td>
-        <td>[10,9,8,7,6,5,4,3,2,1]</td>
-        <td id="13_train">0</td>
-        <td>1800</td>
-                <td id="13_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>14</td>
-        <td>[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]</td>
-        <td id="14_train">0</td>
-        <td>1800</td>
-                <td id="14_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>15</td>
-        <td>[10,11,12,13,14,15]</td>
-        <td id="15_train">0</td>
-        <td>1800</td>
-                <td id="15_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>16</td>
-        <td>[1,2,3,4,5,6,7,8,9,10]</td>
-        <td id="16_train">0</td>
-        <td>1800</td>
-                <td id="16_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>17</td>
-        <td>[10,9,8,7,6,5,4,3,2,1]</td>
-        <td id="17_train">0</td>
-        <td>1800</td>
-                <td id="17_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>18</td>
-        <td>[15,14,13,12,11,10]</td>
-        <td id="18_train">0</td>
-        <td>1800</td>
-                <td id="18_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>19</td>
-        <td>[1,2,3,4,5,6,7,8,9,10]</td>
-        <td id="19_train">0</td>
-        <td>1800</td>
-                <td id="19_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>20</td>
-        <td>[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]</td>
-        <td id="20_train">0</td>
-        <td>1800</td>
-                <td id="20_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>21</td>
-        <td>[15,14,13,12,11,10,9,8,7,6,5,4,3,2,1]</td>
-        <td id="21_train">0</td>
-        <td>1800</td>
-                <td id="21_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>22</td>
-        <td>[1,2,3,4,5,6,7,8,9,10]</td>
-        <td id="22_train">0</td>
-        <td>1800</td>
-                <td id="22_trainStatus">Stopped</td>
-
-      </tr>
-      <tr>
-        <td>23</td>
-        <td>[15,14,13,12,11,10]</td>
-        <td id="23_train">0</td>
-        <td>1800</td>
-                <td id="23_trainStatus">Stopped</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-</div>
-
-
-    </div>
-
-    <footer class="text-muted">
+<div class="collapse bg-inverse" id="navbarHeader">
+  <div class="container">
     <div class="row">
-      <div class="container">
-        <p class="float-right">
-        </p>
-        <p> <br> <br> Claudia Bedoya, Santiago Liñán, 2017</p>
+      <div class="col-sm-8 py-4">
+        <h4 class="text-white">About</h4>
+        <p class="text-muted">This project is built with Scala, Play and Websockets.</p>
       </div>
+      <div class="col-sm-4 py-4">
+        <h4 class="text-white">Contact</h4>
+        <ul class="list-unstyled">
+          <li class="text-white">Claudia Bedoya</li>
+          <li class="text-white">Santiago Liñán</li>
+        </ul>
       </div>
-    </footer>
+    </div>
+  </div>
+</div>
+
+<div class="navbar navbar-inverse bg-inverse">
+  <div class="container d-flex justify-content-between">
+    <a href="#" class="navbar-brand">TransmiMetro</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarHeader" aria-controls="navbarHeader" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+  </div>
+</div>
+
+<section class="jumbotron text-center">
+  <div class="container">
+    <h1 class="jumbotron-heading">TransmiMetro</h1>
+    <p class="lead text-muted">Please start the simulation. 12 seconds of simulation are 3 minutes in the system.</p>
+    <p>
+      <a href="#" class="btn btn-primary" onclick="connectToWS();return false;">Start</a>
+    </p>
+  </div>
+</section>
+
+<div class="container">
+
+  <div class="row">
+    <div class="col-5">
+      <h2> Last Events </h2>
+      <p>These are the events in real time in the system.</p>
+      <textarea class="form-control" id="notifications" rows="15" readonly></textarea>
+      <br>
+      <h3> Definition </h3>
+      <p><b>ARRIVED:X:Y</b> -> Train X arrives Station X</p>
+      <p><b>STATION:X:Y</b> -> Station X has Y Users</p>
+      <p><b>TRAIN:X:Y</b> -> Train X has  Y users</p>
+      <p><b>TRAIN_STATUS:X:Y</b> -> Train X has Y status</p>
+      <p><b>REPORT:X:Y:P:Q</b> -> Station X has an average of Y users. P entered and Q leaved </p>
+    </div>
+
+    <div class="col-7">
+      <h2> System map </h2>
+      <p>Click on the trains to get more information about them.</p>
+      <div id="map">
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-4">
+      <h2>Stations</h2>
+      <p>Stations information. Click on each button, to get the station population density report.</p>
+      <table class="table table-striped">
+        <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Users</th>
+          <th>Report</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td>1</td>
+          <td>Portal Américas</td>
+          <td id="1_passengers">0</td>
+          <td><button class="btn btn-primary" onclick="openReport(1);return false;">Report</button></td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Calle 42 Sur</td>
+          <td id="2_passengers">0</td>
+          <td><button class="btn btn-primary"  onclick="openReport(2);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Carrera 80</td>
+          <td id="3_passengers">0</td>
+          <td><button class="btn btn-primary"  onclick="openReport(3);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>Kennedy</td>
+          <td id="4_passengers">0</td>
+          <td><button class="btn btn-primary"  onclick="openReport(4);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>Avenida Boyaca</td>
+          <td id="5_passengers">0</td>
+          <td><button class="btn btn-primary"  onclick="openReport(5);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>Carrera 68</td>
+          <td id="6_passengers">0</td>
+          <td><button class="btn btn-primary"  onclick="openReport(6);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td>Carrera 50</td>
+          <td id="7_passengers">0</td>
+          <td ><button class="btn btn-primary"  onclick="openReport(7);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td>NQS</td>
+          <td id="8_passengers">0</td>
+          <td><button class="btn btn-primary"  onclick="openReport(8);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td>Narino</td>
+          <td id="9_passengers">0</td>
+          <td><button class="btn btn-primary"  onclick="openReport(9);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td>Calle 1</td>
+          <td id="10_passengers">0</td>
+          <td><button class="btn btn-primary"  onclick="openReport(10);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        <tr>
+          <td>11</td>
+          <td>Calle 10</td>
+          <td id="11_passengers">0</td>
+          <td><button class="btn btn-primary"  onclick="openReport(11);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        <tr>
+          <td>12</td>
+          <td>Calle 26</td>
+          <td id="12_passengers">0</td>
+          <td><button class="btn btn-primary"  onclick="openReport(12);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        <tr>
+          <td>13</td>
+          <td>Calle 45</td>
+          <td id="13_passengers">0</td>
+          <td><button class="btn btn-primary"  onclick="openReport(13);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        <tr>
+          <td>14</td>
+          <td>Calle 63</td>
+          <td id="14_passengers">0</td>
+          <td><button class="btn btn-primary"  onclick="openReport(14);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        <tr>
+          <td>15</td>
+          <td>Calle 72</td>
+          <td id="15_passengers">0</td>
+          <td><button class="btn btn-primary"   onclick="openReport(15);return false;" data-toggle="modal" data-target=".bd-example-modal-lg">Report</button></td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col-md-8">
+      <h2>Trains</h2>
+      <p>Real time updated occupation for each train.</p>
+      <table class="table table-striped">
+        <thead>
+        <tr>
+          <th>ID</th>
+          <th>Stations</th>
+          <th>Occupation</th>
+          <th>Maximum Capacity</th>
+          <th>Current Status</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td>1</td>
+          <td>[1,2,3,4,5,6,7,8,9,10]</td>
+          <td id="1_train">0</td>
+          <td>900</td>
+          <td id="1_trainStatus">On Route</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>[10,9,8,7,6,5,4,3,2,1]</td>
+          <td id="2_train">0</td>
+          <td>900</td>
+          <td id="2_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]</td>
+          <td id="3_train">0</td>
+          <td>900</td>
+          <td id="3_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>[15,14,13,12,11,10,9,8,7,6,5,4,3,2,1]</td>
+          <td id="4_train">0</td>
+          <td>900</td>
+          <td id="4_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>[15,14,13,12,11,10]</td>
+          <td id="5_train">0</td>
+          <td>900</td>
+          <td id="5_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>[10,11,12,13,14,15]</td>
+          <td id="6_train">0</td>
+          <td>900</td>
+          <td id="6_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>7</td>
+          <td>[1,2,3,4,5,6,7,8,9,10]</td>
+          <td id="7_train">0</td>
+          <td>900</td>
+          <td id="7_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>8</td>
+          <td>[10,9,8,7,6,5,4,3,2,1]</td>
+          <td id="8_train">0</td>
+          <td>900</td>
+          <td id="8_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>9</td>
+          <td>[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]</td>
+          <td id="9_train">0</td>
+          <td>900</td>
+          <td id="9_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>10</td>
+          <td>[15,14,13,12,11,10,9,8,7,6,5,4,3,2,1]</td>
+          <td id="10_train">0</td>
+          <td>900</td>
+          <td id="10_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>11</td>
+          <td>[10,11,12,13,14,15]</td>
+          <td id="11_train">0</td>
+          <td>900</td>
+          <td id="11_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>12</td>
+          <td>[1,2,3,4,5,6,7,8,9,10]</td>
+          <td id="12_train">0</td>
+          <td>1800</td>
+          <td id="12_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>13</td>
+          <td>[10,9,8,7,6,5,4,3,2,1]</td>
+          <td id="13_train">0</td>
+          <td>1800</td>
+          <td id="13_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>14</td>
+          <td>[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]</td>
+          <td id="14_train">0</td>
+          <td>1800</td>
+          <td id="14_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>15</td>
+          <td>[10,11,12,13,14,15]</td>
+          <td id="15_train">0</td>
+          <td>1800</td>
+          <td id="15_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>16</td>
+          <td>[1,2,3,4,5,6,7,8,9,10]</td>
+          <td id="16_train">0</td>
+          <td>1800</td>
+          <td id="16_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>17</td>
+          <td>[10,9,8,7,6,5,4,3,2,1]</td>
+          <td id="17_train">0</td>
+          <td>1800</td>
+          <td id="17_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>18</td>
+          <td>[15,14,13,12,11,10]</td>
+          <td id="18_train">0</td>
+          <td>1800</td>
+          <td id="18_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>19</td>
+          <td>[1,2,3,4,5,6,7,8,9,10]</td>
+          <td id="19_train">0</td>
+          <td>1800</td>
+          <td id="19_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>20</td>
+          <td>[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]</td>
+          <td id="20_train">0</td>
+          <td>1800</td>
+          <td id="20_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>21</td>
+          <td>[15,14,13,12,11,10,9,8,7,6,5,4,3,2,1]</td>
+          <td id="21_train">0</td>
+          <td>1800</td>
+          <td id="21_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>22</td>
+          <td>[1,2,3,4,5,6,7,8,9,10]</td>
+          <td id="22_train">0</td>
+          <td>1800</td>
+          <td id="22_trainStatus">Stopped</td>
+
+        </tr>
+        <tr>
+          <td>23</td>
+          <td>[15,14,13,12,11,10]</td>
+          <td id="23_train">0</td>
+          <td>1800</td>
+          <td id="23_trainStatus">Stopped</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
 
-      <div id="modalReport" class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true" style="display: none;">
+</div>
+
+<footer class="text-muted">
+  <div class="row">
+    <div class="container">
+      <p class="float-right">
+      </p>
+      <p> <br> <br> Claudia Bedoya, Santiago Liñán, 2017</p>
+    </div>
+  </div>
+</footer>
+
+
+<div id="modalReport" class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true" style="display: none;">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
 
       <div class="modal-header">
         <h4 class="modal-title" id="myLargeModalLabel"><h2>Station Report <small id="stname"></small></h2>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">×</span>
-        </button>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">×</span>
+          </button>
       </div>
       <div class="modal-body">
         <h4> Density of passengers </h4>
-      <canvas id="chart1" width="200" height="100"></canvas>
-      <br>
-      <h4> Passengers in and out </h4>
-      <canvas id="chart2" width="200" height="100"></canvas>
+        <canvas id="chart1" width="200" height="100"></canvas>
+        <br>
+        <h4> Passengers in and out </h4>
+        <canvas id="chart2" width="200" height="100"></canvas>
       </div>
     </div>
   </div>
 </div>
 
-      <script>
-var ctx1 = document.getElementById("chart1");
-var chart1 = new Chart(ctx1, {
-    type: 'line',
-    data: {
-        labels: currentStationReport.time,
-        datasets: [{
-                    label: "Density of passengers",
-                    data: currentStationReport.average,
-                    backgroundColor: 'rgb(7, 121, 178)',
-                    borderColor: 'rgb(7, 121, 178)',
-                    fill: false}]
-    }
+<script>
+    var ctx1 = document.getElementById("chart1");
+    var chart1 = new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: currentStationReport.time,
+            datasets: [{
+                label: "Density of passengers",
+                data: currentStationReport.average,
+                backgroundColor: 'rgb(7, 121, 178)',
+                borderColor: 'rgb(7, 121, 178)',
+                fill: false}]
+        }
 
-});
+    });
 
-var ctx2 = document.getElementById("chart2");
-var chart2 = new Chart(ctx2, {
-    type: 'line',
-    data: {
-        labels: currentStationReport.time,
-        datasets: [{
-                    label: "Passengers in",
-                    data: currentStationReport.in,
-                    backgroundColor: 'rgb(7, 121, 178)',
-                    borderColor: 'rgb(7, 121, 178)',
-                    fill: false
-                },
-                    {
+    var ctx2 = document.getElementById("chart2");
+    var chart2 = new Chart(ctx2, {
+        type: 'line',
+        data: {
+            labels: currentStationReport.time,
+            datasets: [{
+                label: "Passengers in",
+                data: currentStationReport.in,
+                backgroundColor: 'rgb(7, 121, 178)',
+                borderColor: 'rgb(7, 121, 178)',
+                fill: false
+            },
+                {
                     label: "Passengers out",
                     data: currentStationReport.out,
                     fill: false
                 }]
-    }
+        }
 
-});
+    });
 </script>
 
-    <div>
-    </div>
-  </div>
+<div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -584,7 +582,7 @@ var chart2 = new Chart(ctx2, {
 
 </body>
 
-    <script type="text/javascript">
+<script type="text/javascript">
 
     var DELTAX = 50;
     var DELTAY = 24;
@@ -600,7 +598,7 @@ var chart2 = new Chart(ctx2, {
         station = {x:cX, time:[], average:[], in:[], out:[]}
         cX += DELTAX;
         stations.push(station);
-    } 
+    }
 
     app = new PIXI.Application(800, 600, {backgroundColor : 0xECEEEF});
     document.getElementById("map").appendChild(app.view);
@@ -631,52 +629,52 @@ var chart2 = new Chart(ctx2, {
         t.max = max;
         t.users = 0;
         app.stage.addChild(t);
-            trains.push(t);
+        trains.push(t);
 
-    // Opt-in to interactivity
-    t.interactive = true;
+        // Opt-in to interactivity
+        t.interactive = true;
 
-    // Shows hand cursor
-    t.buttonMode = true;
+        // Shows hand cursor
+        t.buttonMode = true;
 
-    t.on('pointerdown', onButtonDown);
-}
+        t.on('pointerdown', onButtonDown);
+    }
 
-function onButtonDown () {
-    title = "Train "+this.numb+"";
-    content = "Max capacity: "+this.max +"\r\n Number of passengers: "+this.users + "\r\n \r\n * To refresh this value, please click OK and click again on the train";
-    swal(title, content)
+    function onButtonDown () {
+        title = "Train "+this.numb+"";
+        content = "Max capacity: "+this.max +"\r\n Number of passengers: "+this.users + "\r\n \r\n * To refresh this value, please click OK and click again on the train";
+        swal(title, content)
 
-}
+    }
 
-function openReport(stationNum)
-{
-    currentStationReport = stations[stationNum-1];
+    function openReport(stationNum)
+    {
+        currentStationReport = stations[stationNum-1];
 
-    $('#stname').text(stationNum);
+        $('#stname').text(stationNum);
 
-    $("#modalReport").modal();
-    ctx1 = document.getElementById("chart1");
-    chart1 = new Chart(ctx1, {
-    type: 'line',
-    data: {
-        labels: currentStationReport.time,
-        datasets: [{
+        $("#modalReport").modal();
+        ctx1 = document.getElementById("chart1");
+        chart1 = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: currentStationReport.time,
+                datasets: [{
                     label: "Density of passengers",
                     data: currentStationReport.average,
                     backgroundColor: 'rgb(7, 121, 178)',
                     borderColor: 'rgb(7, 121, 178)',
                     fill: false}]
-    }
+            }
 
-});
+        });
 
-    ctx2 = document.getElementById("chart2");
-    chart2 = new Chart(ctx2, {
-    type: 'line',
-    data: {
-        labels: currentStationReport.time,
-        datasets: [{
+        ctx2 = document.getElementById("chart2");
+        chart2 = new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: currentStationReport.time,
+                datasets: [{
                     label: "Passengers in",
                     data: currentStationReport.in,
                     backgroundColor: 'rgb(7, 121, 178)',
@@ -684,16 +682,16 @@ function openReport(stationNum)
                     fill: false
                 },
                     {
-                    label: "Passengers out",
-                    data: currentStationReport.out,
-                    fill: false
-                }]
-    }
-});
+                        label: "Passengers out",
+                        data: currentStationReport.out,
+                        fill: false
+                    }]
+            }
+        });
 
-    chart1.update();
-    chart2.update();
-}
+        chart1.update();
+        chart2.update();
+    }
 
     // Listen for animate update
     app.ticker.add(function(delta) {
@@ -703,6 +701,6 @@ function openReport(stationNum)
         //bunny.rotation += 0.1 * delta;
     });
 
-    </script>
+</script>
 
 </html>
